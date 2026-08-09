@@ -56,24 +56,28 @@ interface can be driven end to end without a key.
 ## Going live
 
 The browser cannot hold an Anthropic API key safely, and `api.anthropic.com`
-can't be called straight from a page anyway (CORS). Put a tiny server in front
-that attaches `x-api-key` and `anthropic-version`, then point the app at it:
+can't be called straight from a page anyway (CORS). `proxy.js` solves both: it
+serves the site *and* proxies `POST /api/claude` upstream with `x-api-key` and
+`anthropic-version` attached.
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+node proxy.js
+# → http://localhost:8787/cognitive-resistance.html?live=1
+```
+
+`?live=1` is what flips the app out of demo mode; the endpoint already defaults
+to the relative `/api/claude`, so nothing else needs configuring. Override any
+of it before `script.js` loads:
 
 ```html
 <script>
-  window.CR_CONFIG = {
-    live: true,
-    endpoint: '/api/claude',      // your proxy → api.anthropic.com/v1/messages
-    model: 'claude-sonnet-4-6'
-  };
+  window.CR_CONFIG = { live: true, endpoint: '/api/claude', model: 'claude-sonnet-4-6' };
 </script>
 ```
 
-Load that before `script.js`. `?live=1` also forces live mode against whatever
-endpoint is configured.
-
-The proxy needs to forward the request body untouched — pass 2 sends the
-`web_search_20250305` server tool, which is what makes the audit adversarial
+The proxy forwards the request body untouched, which matters — pass 2 sends the
+`web_search_20250305` server tool, and that is what makes the audit adversarial
 rather than just a second opinion.
 
 ---
@@ -88,6 +92,8 @@ rather than just a second opinion.
 | `riso.js` | grain, ambient lattice, reticle, text scramble, reveals, hero plate |
 | `demo-data.js` | scripted output for keyless demos |
 | `script.js` | two-pass pipeline + staging |
+| `proxy.js` | static server + `/api/claude` key-injecting proxy |
+| `TESTING.md` | manual test plan |
 
 ---
 

@@ -9,7 +9,10 @@ window.CR = window.CR || {};
 
 /* ── configuration ───────────────────────────────────────────── */
 const CONFIG = Object.assign({
-  endpoint: 'https://api.anthropic.com/v1/messages',
+  // proxy.js serves this page and attaches the key upstream. A browser can
+  // never call api.anthropic.com directly — no safe place for the key, and
+  // CORS blocks it regardless — so the relative proxy path is the default.
+  endpoint: '/api/claude',
   model: 'claude-sonnet-4-6',
   maxTokens: 1200,
   // demo by default so the interface runs with no key;
@@ -76,7 +79,7 @@ function logDone(li, cls){
 
 function statusStrip(text){
   const el = document.createElement('div');
-  el.className = 'status';
+  el.className = 'status-strip';
   el.innerHTML = `<div class="spinner"></div><span>${esc(text)}</span>`;
   return el;
 }
@@ -187,7 +190,7 @@ function renderDemoNotice(){
   el.style.borderLeftColor = 'var(--yellow)';
   el.innerHTML = `<b style="color:var(--ink)">DEMO MODE — NO MODEL WAS CALLED</b>
     <p>Every grade below is scripted so the interface can be driven end to end without an API key.
-    Add <code>?live=1</code> (with an endpoint that carries your key) for a real two-pass audit.</p>`;
+    Serve with <code>node proxy.js</code> and add <code>?live=1</code> for a real two-pass audit.</p>`;
   return el;
 }
 
@@ -384,7 +387,7 @@ async function run(question){
 
   } catch (err){
     CR.graph.clearPulses();
-    results.querySelectorAll('.status').forEach((s) => s.remove());
+    results.querySelectorAll('.status-strip').forEach((s) => s.remove());
     results.appendChild(renderError(err));
     log('FAILED — ' + err.message.toUpperCase(), 'bad');
     setPhase('error');

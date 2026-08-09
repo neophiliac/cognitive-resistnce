@@ -4,7 +4,7 @@ Manual test plan. No test framework in this repo (static HTML/CSS/JS, no backend
 
 Setup: serve the folder (`python3 -m http.server`) and open `cognitive-resistance.html` (or `index.html`, which redirects to it), or open the file directly. Keep the browser console visible throughout — any uncaught JS error is a fail even if the UI looks fine.
 
-**The app boots in DEMO mode by default** — `script.js` calls `CR.demo` (scripted output from `demo-data.js`) instead of the real API, so the full two-pass pipeline runs end to end with no key and no network dependency. This is the primary path to test. Add `?live=1` to the URL to force a real call to `https://api.anthropic.com/v1/messages`, which is expected to fail client-side (see "Live mode" below) unless `window.CR_CONFIG` points at a proxy.
+**The app boots in DEMO mode by default** — `script.js` calls `CR.demo` (scripted output from `demo-data.js`) instead of the real API, so the full two-pass pipeline runs end to end with no key and no network dependency. This is the primary path to test. Add `?live=1` to the URL to force a real call to `CONFIG.endpoint`, which now defaults to the relative `/api/claude` — served by `proxy.js`. Under `python3 -m http.server` that path 404s (expected); to exercise live mode properly, serve with `ANTHROPIC_API_KEY=... node proxy.js` instead.
 
 ## Smoke test (~2 min)
 
@@ -54,11 +54,12 @@ Run this before anything else. If any step fails, stop and file it — don't bot
 
 ### 5. Live mode (`?live=1`)
 - Load `cognitive-resistance.html?live=1`. Spec strip MODE reads `LIVE` instead of `DEMO`.
-- Submitting a question calls `callClaude()` against `CONFIG.endpoint` directly from client-side JS with no API key attached — expect this to fail (no `x-api-key`, and likely CORS on `api.anthropic.com`). This is the known, documented gap (see README "Going live"), not a new bug.
-- Confirm the failure surfaces via `renderError()`: `.error-box` titled "TRANSMISSION FAILED" with a tailored hint line — mentions `x-api-key`/proxy for 401/403 responses, mentions CORS for `Failed to fetch`/`NetworkError`.
+- **Served by `proxy.js` with a valid key:** submitting a question calls `POST /api/claude`; the proxy attaches `x-api-key` + `anthropic-version` upstream. Expect a real answer and a real audit. Run the full smoke test in this mode: confirm real content renders, the web-search-backed tiers look plausible, and a malformed-JSON audit falls back to the raw-text panel (`UNDER ITS OWN SCRUTINY` / `RAW`) without hanging — hint/button must still reset.
+- **Served by any plain static server (no proxy):** `/api/claude` 404s. Confirm the failure surfaces via `renderError()`: `.error-box` titled "TRANSMISSION FAILED" with a tailored hint line — mentions `x-api-key`/proxy for 401/403, CORS for `Failed to fetch`/`NetworkError`.
+- **Key missing from the proxy env:** `proxy.js` exits at startup rather than serving keyless — confirm it does not boot into a half-working state.
 - Process log's last line reads `FAILED — ...` in the `bad` style; spec strip STATUS reads `ERROR`.
 - No orphaned spinner or stuck pulses after the failure; **INTERROGATE** re-enables.
-- If a real proxy endpoint is configured via `window.CR_CONFIG` (or hardcoded for a test session), repeat the full smoke test in live mode: confirm real answer/audit content renders, and that a malformed-JSON audit response falls back to the raw-text panel (`UNDER ITS OWN SCRUTINY` / `RAW`) without hanging — hint/button must still reset.
+- Overriding `window.CR_CONFIG` (endpoint/model/live) before `script.js` loads takes effect — useful for pointing at a deployed proxy rather than localhost.
 
 ### 6. Error handling detail
 - Simulate network failure for pass 1 only (devtools → offline, or block the request) in live mode → error box shows, spinner removed, button re-enabled, no partial graph nodes left dangling mid-animation.

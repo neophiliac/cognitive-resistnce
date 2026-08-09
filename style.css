@@ -282,6 +282,25 @@ main{ position:relative; z-index:2; }
   padding: 0 5px;
   box-decoration-break: clone;
 }
+/* links read as a printed ink rule that floods the word on hover —
+   never the browser's default blue, which fights the whole palette */
+.lede a{
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  background-image: linear-gradient(var(--blue), var(--blue));
+  background-size: 100% 3px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  box-decoration-break: clone;
+  transition: background-size .22s var(--ease-out), color .22s var(--ease-out);
+}
+.lede a:hover, .lede a:focus-visible{
+  background-size: 100% 100%;
+  color: var(--paper-2);
+  outline: none;
+}
+.lede a:focus-visible{ box-shadow: 0 0 0 3px var(--pink); }
 
 .tier-key{
   display:flex; flex-wrap:wrap; gap:8px;
@@ -759,7 +778,7 @@ main{ position:relative; z-index:2; }
 .claim-check::before{ content:"→"; color: var(--pink); font-weight:700; flex:none; }
 
 /* status strip while thinking */
-.status{
+.status-strip{
   display:flex; align-items:center; gap:12px;
   border: var(--rule);
   background: var(--paper-2);
@@ -770,7 +789,7 @@ main{ position:relative; z-index:2; }
   position:relative; overflow:hidden;
   animation: slam .35s var(--ease-out) backwards;
 }
-.status::after{
+.status-strip::after{
   content:""; position:absolute; inset:0;
   background: linear-gradient(90deg, transparent, rgba(255,72,176,.28), transparent);
   transform: translateX(-100%);
