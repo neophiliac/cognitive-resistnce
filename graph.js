@@ -285,7 +285,7 @@ CR.graph = (function(){
     dragging = n;
     n.fixed = true;
     dragDX = n.x - p.x; dragDY = n.y - p.y;
-    svg.setPointerCapture(e.pointerId);
+    try { svg.setPointerCapture(e.pointerId); } catch (_){}
     setHover(n.id);
     e.preventDefault();
   }

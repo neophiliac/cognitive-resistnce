@@ -16,6 +16,11 @@ discrete claims and grades each one:
 Each claim is staged twice: as a **card** in the feed and as a **node** in a live
 force-directed cognition graph. Hovering either one lights the other.
 
+![The cognition graph assembling as the audit grades each claim](demo/graph-assembly.gif)
+
+Full walkthrough (58s): `demo/cognitive-resistance-demo-1080p.mp4` — not committed,
+see `.gitignore`.
+
 ---
 
 ## Design

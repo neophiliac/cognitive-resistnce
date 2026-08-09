@@ -1,2 +1,9 @@
+.DS_Store
+.claude/
 
 node_modules/*
+
+# demo captures — the mp4s are large; the GIF is committed for the README.
+# Drop these two lines if you want the full-resolution video in the repo.
+demo/*.mp4
+demo/*.mov
