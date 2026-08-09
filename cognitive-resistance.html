@@ -1,30 +1,239 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-phase="idle">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cognitive Resistance</title>
+<title>Cognitive Resistance — Adversarial Verification Engine</title>
+<meta name="description" content="Every answer gets a second, adversarial pass. Claude auditing Claude, with a web search, before you're allowed to just believe it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="wrap">
-  <p class="eyebrow">Cognitive Resistance</p>
-  <h1>Ask something. Then watch it get checked.</h1>
-  <p class="lede">Every answer here gets a second, adversarial pass — Claude auditing Claude, with a web search, before you're allowed to just <em>believe it</em>.</p>
 
-  <form id="askForm">
-    <textarea id="promptInput" placeholder="Ask anything — a fact, a claim, a recommendation…" required></textarea>
-    <div class="form-row">
-      <span class="hint" id="hintText">nothing here is trusted by default</span>
-      <button type="submit" id="submitBtn">Ask</button>
+<!-- ══════════ PRINT ARTEFACT LAYERS ══════════ -->
+<div class="paper-grain" aria-hidden="true"></div>
+<div class="paper-halftone" aria-hidden="true"></div>
+<canvas id="lattice" class="lattice" aria-hidden="true"></canvas>
+<div class="reticle" id="reticle" aria-hidden="true"><i></i><i></i></div>
+
+<!-- ══════════ RISOGRAPH SVG DEFS (inks, halftones, misregistration) ══════════ -->
+<svg class="riso-defs" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- halftone screens, one per ink, each rotated to its own screen angle like real 4-colour separation -->
+    <pattern id="ht-pink" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(15)">
+      <circle cx="3.5" cy="3.5" r="2.1" fill="#FF48B0"/>
+    </pattern>
+    <pattern id="ht-blue" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(75)">
+      <circle cx="3.5" cy="3.5" r="2.1" fill="#0F5BD9"/>
+    </pattern>
+    <pattern id="ht-yellow" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(0)">
+      <circle cx="3.5" cy="3.5" r="2.3" fill="#FFD400"/>
+    </pattern>
+    <pattern id="ht-green" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <circle cx="3.5" cy="3.5" r="2.1" fill="#00A95C"/>
+    </pattern>
+    <pattern id="ht-ink" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <circle cx="3" cy="3" r="1.7" fill="#14110E"/>
+    </pattern>
+    <pattern id="ht-sparse" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+      <circle cx="5" cy="5" r="1.5" fill="#14110E" opacity=".55"/>
+    </pattern>
+
+    <!-- rough, ink-bled edges: the signature riso "the drum wobbled" look -->
+    <filter id="riso-rough" x="-12%" y="-12%" width="124%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="riso-rough-soft" x="-12%" y="-12%" width="124%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- ink spread / soft overprint bloom -->
+    <filter id="ink-spread" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feComponentTransfer in="b"><feFuncA type="linear" slope="1.9" intercept="-0.12"/></feComponentTransfer>
+    </filter>
+    <!-- paper fibre noise used by the hero plate -->
+    <filter id="paper-noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+
+    <!-- node glyph: a printed cognition cell -->
+    <symbol id="glyph-cell" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="12" r="3.4" fill="currentColor"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ══════════ MASTHEAD ══════════ -->
+<header class="masthead" id="masthead">
+  <a class="mark" href="#console">
+    <span class="mark-brk">[</span><span class="mark-id">CR</span><span class="mark-brk">]</span>
+  </a>
+  <nav class="spec" aria-label="System specification">
+    <span class="spec-cell"><b>ENGINE</b><i>CLAUDE×CLAUDE</i></span>
+    <span class="spec-cell"><b>PASSES</b><i>02</i></span>
+    <span class="spec-cell"><b>INKS</b><i>05</i></span>
+    <span class="spec-cell" id="specMode"><b>MODE</b><i data-scramble>DEMO</i></span>
+    <span class="spec-cell status" id="specStatus"><b>STATUS</b><i data-scramble>IDLE</i></span>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ══════════ HERO ══════════ -->
+  <section class="hero" id="hero">
+    <div class="hero-copy">
+      <p class="kicker" data-reveal><span class="dot"></span>ADVERSARIAL VERIFICATION ENGINE / EST. NOW</p>
+
+      <h1 class="display" data-reveal>
+        <span class="line"><span class="misreg" data-text="ASK">ASK</span> SOMETHING.</span>
+        <span class="line">THEN WATCH</span>
+        <span class="line">IT GET <span class="misreg hot" data-text="CHECKED.">CHECKED.</span></span>
+      </h1>
+
+      <p class="lede" data-reveal>
+        Every answer here takes a second, adversarial pass —
+        <b>Claude auditing Claude</b>, with a live web search, before you are allowed to
+        just <em>believe it</em>. Claims get pulled apart, graded, and hung in the open
+        where you can see exactly which ones are load-bearing.
+      </p>
+
+      <ul class="tier-key" data-reveal>
+        <li class="k-verified"><span></span>VERIFIED</li>
+        <li class="k-contestable"><span></span>CONTESTABLE</li>
+        <li class="k-unverifiable"><span></span>UNVERIFIABLE</li>
+        <li class="k-opinion"><span></span>OPINION AS FACT</li>
+      </ul>
     </div>
-  </form>
 
-  <div id="results"></div>
-</div>
+    <!-- risograph hero plate: 3 misregistered ink separations of one cognition head -->
+    <figure class="hero-plate" data-reveal aria-label="Risograph print of a head rendered as a node network">
+      <svg viewBox="0 0 420 420" class="plate-svg">
+        <g class="plate-ink plate-yellow" filter="url(#riso-rough)">
+          <path d="M210 44c74 0 128 56 128 132 0 44-14 66-14 96 0 26 18 30 18 52 0 30-42 52-96 52-84 0-164-52-164-152S136 44 210 44Z" fill="url(#ht-yellow)"/>
+        </g>
+        <g class="plate-ink plate-blue" filter="url(#riso-rough)">
+          <path d="M210 44c74 0 128 56 128 132 0 44-14 66-14 96 0 26 18 30 18 52 0 30-42 52-96 52-84 0-164-52-164-152S136 44 210 44Z" fill="none" stroke="#0F5BD9" stroke-width="4"/>
+          <path d="M120 250c46 18 96 16 140-8" fill="none" stroke="#0F5BD9" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+        <g class="plate-ink plate-pink" filter="url(#riso-rough-soft)">
+          <circle cx="172" cy="168" r="46" fill="url(#ht-pink)"/>
+        </g>
+        <!-- the cognition network, drawn on top in key ink -->
+        <g class="plate-net" stroke="#14110E" fill="#14110E">
+          <g class="plate-edges" stroke-width="1.6" fill="none" stroke-linecap="round"></g>
+          <g class="plate-nodes"></g>
+        </g>
+        <text class="plate-caption" x="20" y="404">FIG.01 — ONE MIND, TWO PASSES, FIVE INKS</text>
+      </svg>
+    </figure>
+  </section>
 
+  <!-- ══════════ TICKER ══════════ -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- ══════════ CONSOLE ══════════ -->
+  <section class="console" id="console">
+    <div class="console-head">
+      <h2>INPUT / <span>01</span></h2>
+      <p>Nothing typed here is trusted by default. Neither is the reply.</p>
+    </div>
+
+    <form id="askForm" class="rig" novalidate>
+      <div class="rig-body">
+        <label class="field-label" for="promptInput">YOUR QUESTION</label>
+        <textarea id="promptInput" name="prompt" required spellcheck="false"
+          placeholder="Ask anything — a fact, a claim, a recommendation…"></textarea>
+        <div class="field-meter"><span id="charMeter">0</span> CHR</div>
+      </div>
+
+      <div class="rig-foot">
+        <p class="hint" id="hintText" data-scramble>NOTHING HERE IS TRUSTED BY DEFAULT</p>
+        <button type="submit" id="submitBtn" class="btn-brut">
+          <span class="btn-face">
+            <span class="btn-txt">INTERROGATE</span>
+            <svg class="btn-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h16m-6-7 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.5"/></svg>
+          </span>
+        </button>
+      </div>
+    </form>
+
+    <ul class="seeds" id="seeds" aria-label="Example questions">
+      <li><button type="button" data-seed="Is intermittent fasting better than calorie counting for fat loss?">INTERMITTENT FASTING?</button></li>
+      <li><button type="button" data-seed="Did the Great Wall of China get built to be visible from space, and can you actually see it?">GREAT WALL FROM SPACE?</button></li>
+      <li><button type="button" data-seed="Should a startup pick Rust over Go for a high-throughput API backend in 2026?">RUST OVER GO?</button></li>
+    </ul>
+  </section>
+
+  <!-- ══════════ STAGE : GRAPH + READOUT ══════════ -->
+  <section class="stage" id="stage" hidden>
+    <div class="stage-inner">
+
+      <!-- LEFT: live cognition graph -->
+      <div class="graph-col">
+        <div class="graph-frame">
+          <div class="frame-head">
+            <span class="fh-title">FIG.02 — COGNITION GRAPH</span>
+            <span class="fh-meta" id="graphMeta">0 NODES / 0 EDGES</span>
+          </div>
+
+          <svg id="graph" class="graph-svg" role="img" aria-label="Force-directed graph of the answer and its audited claims">
+            <g class="g-edges"></g>
+            <g class="g-pulses"></g>
+            <g class="g-nodes"></g>
+          </svg>
+
+          <div class="frame-foot">
+            <ul class="glegend">
+              <li class="k-verified"><span></span>VER</li>
+              <li class="k-contestable"><span></span>CON</li>
+              <li class="k-unverifiable"><span></span>UNV</li>
+              <li class="k-opinion"><span></span>OPI</li>
+            </ul>
+            <span class="hintlet">DRAG A NODE · HOVER TO CROSS-LINK</span>
+          </div>
+        </div>
+
+        <!-- terminal readout -->
+        <div class="readout" id="readout" aria-live="polite">
+          <div class="ro-head">PROCESS LOG</div>
+          <ol class="ro-lines" id="roLines"></ol>
+        </div>
+      </div>
+
+      <!-- RIGHT: answer, verdict, claims -->
+      <div class="feed-col" id="results"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="foot-rule"></div>
+  <div class="foot-grid">
+    <p class="foot-warn">
+      <b>THE SECOND PASS IS STILL CLAUDE.</b> It can miss things, over-flag things, or be
+      confidently wrong in its own right. Treat every grade on this page as a prompt to go
+      check — not a verdict.
+    </p>
+    <p class="foot-meta">
+      COGNITIVE RESISTANCE<br>
+      TWO-PASS ADVERSARIAL AUDIT<br>
+      RISOGRAPH / 5 INKS / NO TRUST
+    </p>
+  </div>
+</footer>
+
+<script src="riso.js"></script>
+<script src="graph.js"></script>
+<script src="demo-data.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
