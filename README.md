@@ -18,8 +18,10 @@ force-directed cognition graph. Hovering either one lights the other.
 
 ![The cognition graph assembling as the audit grades each claim](demo/graph-assembly.gif)
 
-Full walkthrough (58s): `demo/cognitive-resistance-demo-1080p.mp4` — not committed,
-see `.gitignore`.
+Full 58s walkthrough: **[`demo/cognitive-resistance-demo-1080p.mp4`](demo/cognitive-resistance-demo-1080p.mp4)**
+(1920×1080) — hero, ask a question, watch the graph assemble as the audit grades each
+claim, cross-link a card to its node, drag the graph, read the verdict.
+A lighter 1512×950 cut sits beside it as `demo/cognitive-resistance-demo-native.mp4`.
 
 ---
 
